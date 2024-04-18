@@ -1,0 +1,128 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<RootNamespace>Neliva</RootNamespace>
+
+		<Authors>Neliva</Authors>
+		<Company>Neliva</Company>
+
+		<Copyright>This is free and unencumbered software released into the public domain.</Copyright>
+
+		<PackageTags>UUID GUID Unique</PackageTags>
+
+		<PackageProjectUrl>https://github.com/neliva/Neliva.UidProvider</PackageProjectUrl>
+
+		<!--
+		// https://github.com/NuGet/Home/wiki/Packaging-License-within-the-nupkg-(Technical-Spec)#spdx-specification
+		-->
+		<!-- <PackageLicenseFile>UNLICENSE.md</PackageLicenseFile> -->
+		<PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+
+		<!--
+		// The NuGet client min required version to use the package.
+		// With NuGet 4.3.0+ and Visual Studio 2017 version 15.3+, NuGet supports Semantic Versioning 2.0.0.
+		-->
+		<MinClientVersion>4.3.0</MinClientVersion>
+
+		<Description>Generate globally unique identifiers.</Description>
+
+		<!-- https://github.com/dotnet/sdk/blob/master/src/Tasks/Microsoft.NET.Build.Tasks/targets/Microsoft.NET.DefaultAssemblyInfo.targets -->
+		<VersionPrefix Condition=" '$(Version)' == '' and '$(VersionPrefix)' == '' ">0.1.0</VersionPrefix>
+		<VersionSuffix Condition=" '$(Version)' == '' and '$(VersionSuffix)' == ''">dev</VersionSuffix>
+
+		<!--
+		// https://github.com/dotnet/sourcelink/blob/master/docs/README.md
+		// Starting with .NET Core SDK 2.1.300, a fully deterministic build is
+		// turned on when both Deterministic and ContinuousIntegrationBuild properties are set to true.
+		-->
+		<Deterministic>true</Deterministic>
+
+		<!-- Optional: Publish the repository URL in the built .nupkg (in the NuSpec <Repository> element) -->
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+
+		<!-- Optional: Build symbol package (.snupkg) to distribute the PDB containing Source Link -->
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+		<!--
+		// Optional: Embed source files that are not tracked by the source control manager in the PDB.
+		// This packs auto generated files such as AssemblyInfo, etc.
+		-->
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+		<NoWarn>$(NoWarn);NU5105</NoWarn>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+		<AssemblyOriginatorKeyFile>..\build\AssemblyKey.snk</AssemblyOriginatorKeyFile>
+		<SignAssembly>true</SignAssembly>
+
+		<NeutralLanguage>en-US</NeutralLanguage>
+
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Needed for NuGet package. Do not remove. -->
+		<None Include="..\UNLICENSE.md" Pack="true" PackagePath="" Visible="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Build generated file. -->
+		<None Include=".AssemblyAttributes" Visible="false" />
+	</ItemGroup>
+
+	<!-- This should not be enabled during local dev or the debugger won't be able to find the local source files. -->
+	<!-- https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables -->
+	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+		<!-- Set ContinuousIntegrationBuild to true to indicate that the build executes on a build/CI server. -->
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+
+		<!-- Only set DeterministicSourcePaths to true on a build/CI server, never for local builds. -->
+		<DeterministicSourcePaths>true</DeterministicSourcePaths>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- https://github.com/dotnet/sourcelink -->
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
+	</ItemGroup>
+
+	<!--
+    // Workaround for deterministic builds on SDKs prior to 3.1.300
+    // https://github.com/clairernovotny/DeterministicBuilds
+    // https://github.com/dotnet/sourcelink/issues/572
+    -->
+	<PropertyGroup>
+		<TargetFrameworkMonikerAssemblyAttributesPath>$([System.IO.Path]::Combine('$(IntermediateOutputPath)','$(TargetFrameworkMoniker).AssemblyAttributes$(DefaultLanguageSourceExtension)'))</TargetFrameworkMonikerAssemblyAttributesPath>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<EmbeddedFiles Include="$(GeneratedAssemblyInfoFile)" />
+	</ItemGroup>
+
+	<!-- Workaround for https://github.com/dotnet/sdk/issues/11105 -->
+	<ItemGroup>
+		<SourceRoot Include="$(NuGetPackageRoot)" Condition="'$(NuGetPackageRoot)' != ''" />
+	</ItemGroup>
+
+	<!--
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+        <_Parameter1>$(MSBuildProjectName).Tests, PublicKey=</_Parameter1>
+      </AssemblyAttribute>
+    </ItemGroup>
+    -->
+
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+			<_Parameter1>Authors</_Parameter1>
+			<_Parameter2>Maksim Goleta</_Parameter2>
+		</AssemblyAttribute>
+	</ItemGroup>
+</Project>

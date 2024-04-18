@@ -396,3 +396,6 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+// Auto generated assembly attributes for deterministic .net build
+*.AssemblyAttributes

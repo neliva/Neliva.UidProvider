@@ -72,19 +72,16 @@ namespace Neliva
 
             this.rngFillAction(rd);
 
-            ReadOnlySpan<byte> randomCounter = rd.Slice(0, 4);
-            ReadOnlySpan<byte> randomNode = rd.Slice(4, 6);
+            node.CopyTo(rd.Slice(2)); // If 'node' is provided, copy it over with proper offset.
 
-            ReadOnlySpan<byte> useNode = node.IsEmpty ? randomNode : node;
+            this.counterRef = BinaryPrimitives.ReadUInt32BigEndian(rd.Slice(12));
 
-            this.node5 = useNode[5];
-            this.node4 = useNode[4];
-            this.node3 = useNode[3];
-            this.node2 = useNode[2];
-            this.node1 = useNode[1];
-            this.node0 = useNode[0];
-
-            this.counterRef = BinaryPrimitives.ReadUInt32BigEndian(randomCounter);
+            this.node5 = rd[7];
+            this.node4 = rd[6];
+            this.node3 = rd[5];
+            this.node2 = rd[4];
+            this.node1 = rd[3];
+            this.node0 = rd[2];
         }
 
         /// <summary>
@@ -97,8 +94,8 @@ namespace Neliva
         /// The <paramref name="data"/> span must be between 16 and 32 bytes in length.
         /// </exception>
         /// <exception cref="InvalidOperationException">
-        /// The <see cref="UidUtcNowFunc"/> callback value kind is not UTC,
-        /// or the value is before the Unix apoch.
+        /// The <see cref="UidUtcNowFunc"/> callback value kind is not <see cref="DateTimeKind.Utc"/>,
+        /// or the value is before the <see cref="DateTime.UnixEpoch"/> value.
         /// </exception>
         public void Fill(Span<byte> data)
         {
@@ -111,12 +108,12 @@ namespace Neliva
 
             if (utcNow.Kind != DateTimeKind.Utc)
             {
-                throw new InvalidOperationException($"The '{nameof(UidUtcNowFunc)}' value kind must be UTC.");
+                throw new InvalidOperationException($"The returned '{nameof(UidUtcNowFunc)}' value kind must be UTC.");
             }
 
             if (utcNow < DateTime.UnixEpoch)
             {
-                throw new InvalidOperationException($"The '{nameof(UidUtcNowFunc)}' value must not be before the Unix epoch.");
+                throw new InvalidOperationException($"The returned '{nameof(UidUtcNowFunc)}' value must not be before the Unix epoch.");
             }
 
             long timestamp = (utcNow - DateTime.UnixEpoch).Ticks / TimeSpan.TicksPerMillisecond;

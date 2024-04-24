@@ -108,12 +108,12 @@ namespace Neliva
 
             if (utcNow.Kind != DateTimeKind.Utc)
             {
-                throw new InvalidOperationException($"The returned '{nameof(UidUtcNowFunc)}' value kind must be UTC.");
+                throw new InvalidOperationException($"The date and time value kind must be UTC.");
             }
 
             if (utcNow < DateTime.UnixEpoch)
             {
-                throw new InvalidOperationException($"The returned '{nameof(UidUtcNowFunc)}' value must not be before the Unix epoch.");
+                throw new InvalidOperationException($"The date and time value must not be before the Unix epoch.");
             }
 
             long timestamp = (utcNow - DateTime.UnixEpoch).Ticks / TimeSpan.TicksPerMillisecond;

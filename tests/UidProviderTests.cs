@@ -34,7 +34,7 @@ namespace Neliva.Tests
 
         [TestMethod]
         [DynamicData(nameof(GetValidTestData), DynamicDataSourceType.Method)]
-        public void UidProviderFillPass(byte[] node, DateTime utcNow, uint counter, byte[] rand)
+        public void UidProviderFillPass(byte[] node, DateTime utcNow, ulong counter, byte[] rand)
         {
             int i = 0;
 
@@ -45,11 +45,12 @@ namespace Neliva.Tests
                 {
                     if (i++ == 0)
                     {
-                        BinaryPrimitives.WriteUInt32BigEndian(data, counter);
+                        // Constructor initialize counter
+                        BinaryPrimitives.WriteUInt64BigEndian(data.Slice(8), counter);
                     }
                 }));
 
-            Span<byte> rd = stackalloc byte[16];
+            Span<byte> rd = stackalloc byte[16 + rand.Length];
             Span<byte> tbytes = stackalloc byte[8];
 
             uid.Fill(rd);
@@ -58,22 +59,88 @@ namespace Neliva.Tests
 
             BinaryPrimitives.WriteUInt64BigEndian(tbytes, (ulong)timestampMs);
 
-            Assert.IsTrue(MemoryExtensions.SequenceEqual<byte>(rd.Slice(0, 6), tbytes.Slice(2, 6)));
+            // timestamp
+            Assert.IsTrue(MemoryExtensions.SequenceEqual<byte>(tbytes.Slice(2, 6), rd.Slice(0, 6)));
 
-            uint fillCount = BinaryPrimitives.ReadUInt32BigEndian(rd.Slice(12));
-
+            // node
             Assert.IsTrue(MemoryExtensions.SequenceEqual<byte>(node, rd.Slice(6, 6)));
 
-            Assert.AreEqual(counter + 1, fillCount);
+            // counter - internally already incremented
+            uint fillCount = BinaryPrimitives.ReadUInt32BigEndian(rd.Slice(12));
+
+            uint expectedCounter = (uint)counter + 1;
+
+            Assert.AreEqual(expectedCounter, fillCount);
+
+            // random part
+            Assert.IsTrue(MemoryExtensions.SequenceEqual<byte>(rand, rd.Slice(16)));
         }
 
         private static IEnumerable<object[]> GetValidTestData()
         {
+            // byte[] node, DateTime utcNow, ulong counter, byte[] rand
+
             yield return new object[]
             {
                 new byte[6],
                 DateTime.UnixEpoch,
-                0u,
+                (ulong)0,
+                new byte[0],
+            };
+
+            yield return new object[]
+            {
+                new byte[6],
+                DateTime.UnixEpoch,
+                (ulong)uint.MaxValue << 32,
+                new byte[0],
+            };
+
+            yield return new object[]
+            {
+                new byte[6],
+                DateTime.UnixEpoch,
+                (ulong)1,
+                new byte[0],
+            };
+
+            yield return new object[]
+            {
+                new byte[6],
+                DateTime.UnixEpoch,
+                (ulong)uint.MaxValue - 1,
+                new byte[0],
+            };
+
+            yield return new object[]
+            {
+                new byte[6],
+                DateTime.UnixEpoch,
+                (ulong)uint.MaxValue,
+                new byte[0],
+            };
+
+            yield return new object[]
+            {
+                new byte[6],
+                DateTime.UnixEpoch,
+                (ulong)ulong.MaxValue,
+                new byte[0],
+            };
+
+            yield return new object[]
+            {
+                new byte[6],
+                DateTime.UnixEpoch,
+                (ulong)0xff00ff00ff00ff00,
+                new byte[0],
+            };
+
+            yield return new object[]
+            {
+                new byte[6],
+                DateTime.UnixEpoch,
+                (ulong)0x1122334455667788,
                 new byte[0],
             };
         }

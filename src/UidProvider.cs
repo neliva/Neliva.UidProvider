@@ -9,7 +9,7 @@ using System.Threading;
 namespace Neliva
 {
     /// <summary>
-    /// Provides functionality for generating unique identifier values.
+    /// Provides functionality for generating unique across space and time identifiers.
     /// </summary>
     /// <remarks>
     /// <code>
@@ -72,7 +72,7 @@ namespace Neliva
 
             this.rngFillAction(rd);
 
-            node.CopyTo(rd.Slice(2)); // If 'node' is provided, copy it over with proper offset.
+            node.CopyTo(rd.Slice(2)); // If node is provided, copy it over with proper offset.
 
             this.counterRef = BinaryPrimitives.ReadUInt32BigEndian(rd.Slice(12));
 

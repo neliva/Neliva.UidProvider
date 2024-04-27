@@ -2,7 +2,6 @@
 // See the UNLICENSE file in the project root for more information.
 
 using System;
-using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Threading;
 
@@ -72,9 +71,13 @@ namespace Neliva
 
             this.rngFillAction(rd);
 
-            node.CopyTo(rd.Slice(2)); // If node is provided, copy it over with proper offset.
+            node.CopyTo(rd.Slice(2));
 
-            this.counterRef = BinaryPrimitives.ReadUInt32BigEndian(rd.Slice(12));
+            this.counterRef =
+                  ((uint)rd[15]) |
+                  ((uint)rd[14] << 8) |
+                  ((uint)rd[13] << 16) |
+                  ((uint)rd[12] << 24);
 
             this.node5 = rd[7];
             this.node4 = rd[6];

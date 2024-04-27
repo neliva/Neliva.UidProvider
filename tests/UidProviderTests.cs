@@ -85,7 +85,7 @@ namespace Neliva.Tests
                 new byte[6],
                 DateTime.UnixEpoch,
                 (ulong)0,
-                new byte[0],
+                Array.Empty<byte>(),
             };
 
             yield return new object[]

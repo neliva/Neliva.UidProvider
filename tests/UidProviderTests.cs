@@ -36,7 +36,7 @@ namespace Neliva.Tests
         [DynamicData(nameof(GetValidTestData), DynamicDataSourceType.Method)]
         public void UidProviderFillPass(ulong? node, ulong randNode, DateTime utcNow, ulong counter, byte[] randPart)
         {
-            bool init = false;
+            bool isInitialized = false;
 
             Span<byte> expectedNode = stackalloc byte[8];
             BinaryPrimitives.WriteUInt64BigEndian(expectedNode, node.HasValue ? node.Value : randNode);
@@ -53,14 +53,20 @@ namespace Neliva.Tests
                 new UidUtcNowFunc(() => utcNow),
                 new UidRngFillAction((data) =>
                 {
-                    if (!init) // Constructor initializer
+                    if (!isInitialized) // Constructor()
                     {
+                        Assert.AreEqual(16, data.Length);
+
                         BinaryPrimitives.WriteUInt64BigEndian(data.Slice(0), randNode);
                         BinaryPrimitives.WriteUInt64BigEndian(data.Slice(8), counter);
 
-                        new Span<byte>(randPart).CopyTo(data.Slice(16));
+                        isInitialized = true;
+                    }
+                    else // Fill()
+                    {
+                        Assert.AreEqual(16 + randPart.Length, data.Length);
 
-                        init = true;
+                        new Span<byte>(randPart).CopyTo(data.Slice(16));
                     }
                 }));
 

@@ -4,6 +4,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Neliva.Tests
@@ -96,8 +97,8 @@ namespace Neliva.Tests
                 null,
                 0ul,
                 DateTime.UnixEpoch,
-                (ulong)0,
-                Array.Empty<byte>(),
+                0ul,
+                NewArray(0, 0),
             };
 
             yield return new object[]
@@ -106,7 +107,7 @@ namespace Neliva.Tests
                 0ul,
                 DateTime.UnixEpoch,
                 (ulong)uint.MaxValue << 32,
-                new byte[0],
+                NewArray(0, 0),
             };
 
             yield return new object[]
@@ -114,8 +115,8 @@ namespace Neliva.Tests
                 0ul,
                 0ul,
                 DateTime.UnixEpoch,
-                (ulong)1,
-                new byte[0],
+                1ul,
+                NewArray(0, 0),
             };
 
             yield return new object[]
@@ -124,7 +125,7 @@ namespace Neliva.Tests
                 0ul,
                 DateTime.UnixEpoch,
                 (ulong)uint.MaxValue - 1,
-                new byte[0],
+                NewArray(0, 0),
             };
 
             yield return new object[]
@@ -133,7 +134,7 @@ namespace Neliva.Tests
                 0ul,
                 DateTime.UnixEpoch,
                 (ulong)uint.MaxValue,
-                new byte[0],
+                NewArray(0, 0),
             };
 
             yield return new object[]
@@ -141,8 +142,8 @@ namespace Neliva.Tests
                 0ul,
                 0ul,
                 DateTime.UnixEpoch,
-                (ulong)ulong.MaxValue,
-                new byte[0],
+                ulong.MaxValue,
+                NewArray(0, 0),
             };
 
             yield return new object[]
@@ -150,8 +151,8 @@ namespace Neliva.Tests
                 0ul,
                 0ul,
                 DateTime.UnixEpoch,
-                (ulong)0xff00ff00ff00ff00,
-                new byte[0],
+                0xff00ff00ff00ff00ul,
+                NewArray(0, 0),
             };
 
             yield return new object[]
@@ -159,9 +160,18 @@ namespace Neliva.Tests
                 0ul,
                 0ul,
                 DateTime.UnixEpoch,
-                (ulong)0x1122334455667788,
-                new byte[0],
+                0x1122334455667788ul,
+                NewArray(0, 0),
             };
+        }
+
+        private static byte[] NewArray(int length, byte fillByte)
+        {
+            var a = new byte[length];
+
+            Array.Fill(a, fillByte);
+
+            return a;
         }
     }
 }

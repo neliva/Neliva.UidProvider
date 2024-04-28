@@ -71,20 +71,20 @@ namespace Neliva
 
             this.rngFillAction(rd);
 
-            node.CopyTo(rd.Slice(2));
-
             this.counterRef =
                   ((uint)rd[15]) |
                   ((uint)rd[14] << 8) |
                   ((uint)rd[13] << 16) |
                   ((uint)rd[12] << 24);
 
-            this.node5 = rd[7];
-            this.node4 = rd[6];
-            this.node3 = rd[5];
-            this.node2 = rd[4];
-            this.node1 = rd[3];
-            this.node0 = rd[2];
+            var useNode = node.IsEmpty ? rd.Slice(2, 6) : node;
+
+            this.node5 = useNode[5];
+            this.node4 = useNode[4];
+            this.node3 = useNode[3];
+            this.node2 = useNode[2];
+            this.node1 = useNode[1];
+            this.node0 = useNode[0];
         }
 
         /// <summary>
@@ -95,8 +95,7 @@ namespace Neliva
         /// </param>
         /// <exception cref="ArgumentException">
         /// The <paramref name="data"/> span must be between 16 and 32 bytes in length.
-        /// </exception>
-        /// <exception cref="InvalidOperationException">
+        /// - or -
         /// The <see cref="UidUtcNowFunc"/> callback value kind is not <see cref="DateTimeKind.Utc"/>,
         /// or the value is before the <see cref="DateTime.UnixEpoch"/> value.
         /// </exception>
@@ -104,19 +103,19 @@ namespace Neliva
         {
             if (data.Length < 16 || data.Length > 32)
             {
-                throw new ArgumentException($"The span must be between 16 and 32 bytes in length.", nameof(data));
+                throw new ArgumentException("The span must be between 16 and 32 bytes in length.", nameof(data));
             }
 
             DateTime utcNow = this.utcNowFunc();
 
             if (utcNow.Kind != DateTimeKind.Utc)
             {
-                throw new InvalidOperationException($"The date and time value kind must be UTC.");
+                throw new ArgumentException("The date and time value kind must be UTC.");
             }
 
             if (utcNow < DateTime.UnixEpoch)
             {
-                throw new InvalidOperationException($"The date and time value must not be before the Unix epoch.");
+                throw new ArgumentException("The date and time value must not be before the Unix epoch.");
             }
 
             long timestamp = (utcNow - DateTime.UnixEpoch).Ticks / TimeSpan.TicksPerMillisecond;

@@ -64,9 +64,9 @@ namespace Neliva.Tests
                     }
                     else // Fill()
                     {
-                        Assert.AreEqual(16 + randPart.Length, data.Length);
+                        Assert.AreEqual(randPart.Length, data.Length);
 
-                        new Span<byte>(randPart).CopyTo(data.Slice(16));
+                        new Span<byte>(randPart).CopyTo(data);
                     }
                 }));
 

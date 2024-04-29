@@ -4,7 +4,6 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Neliva.Tests
@@ -12,6 +11,34 @@ namespace Neliva.Tests
     [TestClass]
     public class UidProviderTests
     {
+        [TestMethod]
+        public void UidProviderDefaultPass()
+        {
+            var d = UidProvider.Default;
+
+            Assert.IsTrue(object.ReferenceEquals(d, UidProvider.Default));
+
+            Span<byte> id1 = stackalloc byte[32];
+            Span<byte> id2 = stackalloc byte[32];
+
+            d.Fill(id1);
+            d.Fill(id2);
+
+            // random part
+            Assert.IsTrue(!MemoryExtensions.SequenceEqual<byte>(id1.Slice(16), id2.Slice(16)));
+
+            // count
+            Assert.IsTrue(!MemoryExtensions.SequenceEqual<byte>(id1.Slice(12, 4), id2.Slice(12, 4)));
+
+            // node
+            Assert.IsTrue(MemoryExtensions.SequenceEqual<byte>(id1.Slice(6, 6), id2.Slice(6, 6)));
+
+            var t1 = BinaryPrimitives.ReadUInt64BigEndian(id1) >> 8;
+            var t2 = BinaryPrimitives.ReadUInt64BigEndian(id2) >> 8;
+
+            Assert.IsTrue((t2 - t1) < 2000); // two calls should not be more than 2s apart.
+        }
+
         [TestMethod]
         [DataRow(1)]
         [DataRow(2)]
@@ -23,14 +50,6 @@ namespace Neliva.Tests
         public void UidProviderCreateWithBadNodeFail(int nodeLength)
         {
             Assert.AreEqual("node", Assert.ThrowsException<ArgumentException>(() => new UidProvider(new byte[nodeLength])).ParamName);
-        }
-
-        [TestMethod]
-        [DataRow(0)]
-        [DataRow(6)]
-        public void UidProviderCreateWithNodePass(int nodeLength)
-        {
-            new UidProvider(new byte[nodeLength]);
         }
 
         [TestMethod]

@@ -109,6 +109,8 @@ namespace Neliva.Tests
 
         private static IEnumerable<object[]> GetValidTestData()
         {
+            var maxDate = new DateTime(DateTime.MaxValue.Ticks, DateTimeKind.Utc);
+
             // ulong node, ulong randNode, DateTime utcNow, ulong counter, byte[] randPart
 
             yield return new object[]
@@ -122,55 +124,55 @@ namespace Neliva.Tests
 
             yield return new object[]
             {
-                0ul,
-                0ul,
-                DateTime.UnixEpoch,
-                (ulong)uint.MaxValue << 32,
-                NewArray(0, 0),
-            };
-
-            yield return new object[]
-            {
-                0ul,
-                0ul,
-                DateTime.UnixEpoch,
+                null,
+                ulong.MaxValue,
+                DateTime.UnixEpoch.AddMilliseconds(1d),
                 1ul,
                 NewArray(0, 0),
             };
 
             yield return new object[]
             {
-                0ul,
-                0ul,
-                DateTime.UnixEpoch,
+                null,
+                0xfful,
+                DateTime.UnixEpoch.AddYears(10),
+                (ulong)uint.MaxValue << 32,
+                NewArray(0, 0),
+            };
+
+            yield return new object[]
+            {
+                null,
+                0xfful << 56,
+                DateTime.UnixEpoch.AddYears(500),
                 (ulong)uint.MaxValue - 1,
                 NewArray(0, 0),
             };
 
             yield return new object[]
             {
-                0ul,
-                0ul,
-                DateTime.UnixEpoch,
+                null,
+                0x1122334455667788ul,
+                maxDate.AddSeconds(-1d),
                 (ulong)uint.MaxValue,
                 NewArray(0, 0),
             };
 
             yield return new object[]
             {
-                0ul,
-                0ul,
-                DateTime.UnixEpoch,
+                null,
+                0xd1d2d3d4d5d6d7d8ul,
+                maxDate.AddMilliseconds(-1d),
                 ulong.MaxValue,
                 NewArray(0, 0),
             };
 
             yield return new object[]
             {
-                0ul,
-                0ul,
-                DateTime.UnixEpoch,
-                0xff00ff00ff00ff00ul,
+                null,
+                0xe1e2e3e4e5e6e7e8ul,
+                maxDate,
+                0xf1f2f3f4f5f6f7f8ul,
                 NewArray(0, 0),
             };
 
@@ -179,14 +181,50 @@ namespace Neliva.Tests
                 0ul,
                 0ul,
                 DateTime.UnixEpoch,
+                0ul,
+                NewArray(1, 0),
+            };
+
+            yield return new object[]
+            {
+                0x102030405060ul,
+                ulong.MaxValue,
+                DateTime.UnixEpoch,
+                0ul,
+                NewArray(16, 0),
+            };
+
+            yield return new object[]
+            {
+                0xa1a2a3a4a5a6ul,
+                0xfful,
+                DateTime.UnixEpoch,
+                0ul,
+                NewArray(1, 3),
+            };
+
+            yield return new object[]
+            {
+                0xb1b2b3b4b5b6b7b8ul,
+                0xfful << 56,
+                DateTime.UnixEpoch,
+                0ul,
+                NewArray(16, 5),
+            };
+
+            yield return new object[]
+            {
+                0xc1c2c3c4c5c6c7c8ul,
                 0x1122334455667788ul,
-                NewArray(0, 0),
+                DateTime.UnixEpoch,
+                0ul,
+                NewArray(5, 7),
             };
         }
 
         private static byte[] NewArray(int length, byte fillByte)
         {
-            var a = new byte[length];
+            var a = length == 0 ? Array.Empty<byte>() : new byte[length];
 
             Array.Fill(a, fillByte);
 

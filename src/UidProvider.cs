@@ -38,7 +38,7 @@ namespace Neliva
         private readonly byte node1;
         private readonly byte node0;
 
-        private ulong counterRef;
+        private uint counterRef;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UidProvider"/> class.
@@ -125,7 +125,7 @@ namespace Neliva
                 this.rngFillAction(data.Slice(16));
             }
 
-            ulong counter = Interlocked.Increment(ref this.counterRef);
+            uint counter = Interlocked.Increment(ref this.counterRef);
 
             data[15] = (byte)counter;
             data[14] = (byte)(counter >> 8);

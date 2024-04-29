@@ -53,6 +53,46 @@ namespace Neliva.Tests
         }
 
         [TestMethod]
+        [DataRow(0)]
+        [DataRow(1)]
+        [DataRow(15)]
+        [DataRow(33)]
+        [DataRow(48)]
+        public void UidProviderFillBadDataLengthFail(int dataLength)
+        {
+            var data = new byte[dataLength];
+
+            Assert.AreEqual("data", Assert.ThrowsException<ArgumentException>(() => UidProvider.Default.Fill(data)).ParamName);
+        }
+
+        [TestMethod]
+        [DynamicData(nameof(GetInvalidTimeKindTestData), DynamicDataSourceType.Method)]
+        public void UidProviderFillBadUtcNowKindFail(DateTime utcNow)
+        {
+            var data = new byte[16];
+
+            var uid = new UidProvider(utcNow: () => utcNow);
+
+            var ex = Assert.ThrowsException<ArgumentException>(() => uid.Fill(data));
+
+            Assert.AreEqual("The date and time value kind must be UTC.", ex.Message);
+        }
+
+        [TestMethod]
+        public void UidProviderFillBadUtcNowBeforeUnixEpochFail()
+        {
+            var data = new byte[16];
+
+            var utcNow = DateTime.UnixEpoch.AddMilliseconds(-1d);
+
+            var uid = new UidProvider(utcNow: () => utcNow);
+
+            var ex = Assert.ThrowsException<ArgumentException>(() => uid.Fill(data));
+
+            Assert.AreEqual("The date and time value must not be before the Unix epoch.", ex.Message);
+        }
+
+        [TestMethod]
         [DynamicData(nameof(GetValidTestData), DynamicDataSourceType.Method)]
         public void UidProviderFillPass(ulong? node, ulong randNode, DateTime utcNow, ulong counter, byte[] randPart)
         {
@@ -229,6 +269,15 @@ namespace Neliva.Tests
             Array.Fill(a, fillByte);
 
             return a;
+        }
+
+        private static IEnumerable<object[]> GetInvalidTimeKindTestData()
+        {
+            yield return new object[] { new DateTime(DateTime.UnixEpoch.Ticks, DateTimeKind.Local) };
+            yield return new object[] { new DateTime(DateTime.UnixEpoch.Ticks, DateTimeKind.Unspecified) };
+
+            yield return new object[] { new DateTime(DateTime.UnixEpoch.Ticks - 1, DateTimeKind.Local) };
+            yield return new object[] { new DateTime(DateTime.UnixEpoch.Ticks - 1, DateTimeKind.Unspecified) };
         }
     }
 }

@@ -8,7 +8,7 @@ This repository provides functionality for generating unique across space and ti
 
 ## Overview
 
-The UidProvider generates variable size IDs ranging from 16 bytes to 32 bytes and consists of:
+The UidProvider generates variable size IDs ranging from 16 bytes to 32 bytes. Each ID consists of:
 
 * A 6-byte timestamp, representing the ID's creation, measured in milliseconds since the Unix epoch.
 * A 6-byte random value generated once per process for the default provider instance.

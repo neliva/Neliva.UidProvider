@@ -8,7 +8,23 @@ This repository provides functionality for generating unique across space and ti
 
 ## Overview
 
-The UidProvider generates variable size IDs ranging from 16 bytes to 32 bytes.
+The UidProvider generates variable size IDs ranging from 16 bytes to 32 bytes and consists of:
+
+* A 6-byte timestamp, representing the ID's creation, measured in milliseconds since the Unix epoch.
+* A 6-byte random value generated once per process for the default provider instance.
+* A 4-byte incrementing counter, initialized to a random value.
+* A random value if the ID length is greater than 16 bytes.
+
+For the timestamp and counter values, the most significant bytes appear first in the byte sequence (big-endian). The IDs are lexicographically sortable when encoded in hex or base32 format.
+
+The byte format of the ID is the following:
+```
++-------------+--------+-----------+----------+
+|  Timestamp  |  Node  |  Counter  |  Random  |
++-------------+--------+-----------+----------+
+|  6          |  6     |  4        |  0 - 16  |
++-------------+--------+-----------+----------+ 
+```
 
 ### Usage
 ```C#

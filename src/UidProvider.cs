@@ -11,6 +11,7 @@ namespace Neliva
     /// Provides functionality for generating unique across space and time identifiers.
     /// </summary>
     /// <remarks>
+    /// The byte format of the ID is the following:
     /// <code>
     /// +-------------+--------+-----------+----------+
     /// |  Timestamp  |  Node  |  Counter  |  Random  |

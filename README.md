@@ -1,6 +1,6 @@
 ## Neliva.UidProvider
 
-This repository provides functionality for generating unique across space and time identifiers.
+This repository provides functionality for generating unique across space and time identifiers. The specification and the reference implementation are released into the public domain. See the [UNLICENSE](UNLICENSE.md) file.
 
 [![main](https://github.com/neliva/Neliva.UidProvider/actions/workflows/main.yml/badge.svg)](https://github.com/neliva/Neliva.UidProvider/actions/workflows/main.yml)
 [![dotnet 6.0](https://img.shields.io/badge/dotnet-6.0-green)](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)

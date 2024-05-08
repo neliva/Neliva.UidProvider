@@ -66,7 +66,7 @@ namespace Neliva
             }
 
             this.utcNowFunc = utcNow ?? new UidUtcNowFunc(static () => DateTime.UtcNow);
-            this.rngFillAction = rngFill ?? new UidRngFillAction(static (data) => RandomNumberGenerator.Fill(data));
+            this.rngFillAction = rngFill ?? new UidRngFillAction(RandomNumberGenerator.Fill);
 
             Span<byte> rd = stackalloc byte[16];
 

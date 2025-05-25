@@ -148,4 +148,24 @@ namespace Neliva
             data[0] = (byte)(timestamp >> 40);
         }
     }
+
+    /// <summary>
+    /// Encapsulates a method that returns a <see cref="DateTime"/> object
+    /// that is set to the current UTC date and time on this computer.
+    /// </summary>
+    /// <returns>
+    /// An object whose value is the current UTC local date and time.
+    /// </returns>
+    /// <seealso cref="UidProvider"/>
+    public delegate DateTime UidUtcNowFunc();
+
+    /// <summary>
+    /// Encapsulates a method that fills a span with
+    /// cryptographically strong random bytes.
+    /// </summary>
+    /// <param name="data">
+    /// The span to fill with cryptographically strong random bytes.
+    /// </param>
+    /// <seealso cref="UidProvider"/>
+    public delegate void UidRngFillAction(Span<byte> data);
 }

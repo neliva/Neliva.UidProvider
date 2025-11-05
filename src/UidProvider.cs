@@ -37,7 +37,7 @@ namespace Neliva
         /// </param>
         public UidProvider(UidUtcNowFunc utcNow = default, UidRngFillAction rngFill = default)
         {
-            this.utcNowFunc = utcNow ?? new UidUtcNowFunc(static() => DateTime.UtcNow);
+            this.utcNowFunc = utcNow ?? new UidUtcNowFunc(static () => DateTime.UtcNow);
             this.rngFillAction = rngFill ?? new UidRngFillAction(RandomNumberGenerator.Fill);
         }
 

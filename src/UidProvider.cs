@@ -3,22 +3,14 @@
 
 using System;
 using System.Security.Cryptography;
-using System.Threading;
 
 namespace Neliva
 {
     /// <summary>
-    /// Provides functionality for generating unique across space and time identifiers.
+    /// Provides functionality for generating unique time ordered identifiers.
     /// </summary>
     /// <remarks>
-    /// The byte format of the ID is the following:
-    /// <code>
-    /// +-------------+--------+-----------+----------+
-    /// |  Timestamp  |  Node  |  Counter  |  Random  |
-    /// +-------------+--------+-----------+----------+
-    /// |  6          |  6     |  4        |  0 - 16  |
-    /// +-------------+--------+-----------+----------+ 
-    /// </code>
+    /// The ID consists of a 6 byte timestamp and 10-26 random bytes.
     /// </remarks>
     public sealed class UidProvider
     {
@@ -32,21 +24,9 @@ namespace Neliva
         private readonly UidUtcNowFunc utcNowFunc;
         private readonly UidRngFillAction rngFillAction;
 
-        private readonly byte node5;
-        private readonly byte node4;
-        private readonly byte node3;
-        private readonly byte node2;
-        private readonly byte node1;
-        private readonly byte node0;
-
-        private uint counterRef;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="UidProvider"/> class.
         /// </summary>
-        /// <param name="node">
-        /// A 6 byte node value to embed in the unique identifier.
-        /// If not provided, a random value will be chosen.</param>
         /// <param name="utcNow">
         /// A callback that provides the current UTC date and time
         /// to embed in the unique identifier.
@@ -55,37 +35,10 @@ namespace Neliva
         /// A callback that fills a span with
         /// cryptographically strong random bytes.
         /// </param>
-        /// <exception cref="ArgumentException">
-        /// The <paramref name="node"/> span must be 6 bytes in length.
-        /// </exception>
-        public UidProvider(ReadOnlySpan<byte> node = default, UidUtcNowFunc utcNow = default, UidRngFillAction rngFill = default)
+        public UidProvider(UidUtcNowFunc utcNow = default, UidRngFillAction rngFill = default)
         {
-            if (node.Length != 0 && node.Length != 6)
-            {
-                throw new ArgumentException("The span must be 6 bytes in length.", nameof(node));
-            }
-
-            this.utcNowFunc = utcNow ?? new UidUtcNowFunc(static () => DateTime.UtcNow);
+            this.utcNowFunc = utcNow ?? new UidUtcNowFunc(static() => DateTime.UtcNow);
             this.rngFillAction = rngFill ?? new UidRngFillAction(RandomNumberGenerator.Fill);
-
-            Span<byte> rd = stackalloc byte[16];
-
-            this.rngFillAction(rd);
-
-            this.counterRef =
-                  ((uint)rd[15]) |
-                  ((uint)rd[14] << 8) |
-                  ((uint)rd[13] << 16) |
-                  ((uint)rd[12] << 24);
-
-            var useNode = node.IsEmpty ? rd.Slice(2, 6) : node;
-
-            this.node5 = useNode[5];
-            this.node4 = useNode[4];
-            this.node3 = useNode[3];
-            this.node2 = useNode[2];
-            this.node1 = useNode[1];
-            this.node0 = useNode[0];
         }
 
         /// <summary>
@@ -121,31 +74,14 @@ namespace Neliva
 
             long timestamp = (utcNow - DateTime.UnixEpoch).Ticks / TimeSpan.TicksPerMillisecond;
 
-            if (data.Length > 16)
-            {
-                this.rngFillAction(data.Slice(16));
-            }
-
-            uint counter = Interlocked.Increment(ref this.counterRef);
-
-            data[15] = (byte)counter;
-            data[14] = (byte)(counter >> 8);
-            data[13] = (byte)(counter >> 16);
-            data[12] = (byte)(counter >> 24);
-
-            data[11] = node5;
-            data[10] = node4;
-            data[9] = node3;
-            data[8] = node2;
-            data[7] = node1;
-            data[6] = node0;
+            this.rngFillAction(data.Slice(6));
 
             data[5] = (byte)timestamp;
             data[4] = (byte)(timestamp >> 8);
             data[3] = (byte)(timestamp >> 16);
             data[2] = (byte)(timestamp >> 24);
             data[1] = (byte)(timestamp >> 32);
-            data[0] = (byte)(timestamp >> 40);
+            data[0] = (byte)(timestamp >> 40);                
         }
     }
 

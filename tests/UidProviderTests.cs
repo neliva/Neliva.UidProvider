@@ -52,9 +52,9 @@ namespace Neliva.Tests
         {
             var data = new byte[16];
 
-            var uid = new UidProvider(utcNow: () => utcNow);
+            var uid = new TestUidProvider(utcNow, new byte[10]);
 
-            var ex = Assert.ThrowsException<ArgumentException>(() => uid.Fill(data));
+            var ex = Assert.ThrowsException<InvalidOperationException>(() => uid.Fill(data));
             
             Assert.AreEqual("The date and time value kind must be UTC.", ex.Message);
         }
@@ -66,9 +66,9 @@ namespace Neliva.Tests
 
             var utcNow = DateTime.UnixEpoch.AddMilliseconds(-1d);
 
-            var uid = new UidProvider(utcNow: () => utcNow);
+            var uid = new TestUidProvider(utcNow, new byte[10]);
 
-            var ex = Assert.ThrowsException<ArgumentException>(() => uid.Fill(data));
+            var ex = Assert.ThrowsException<InvalidOperationException>(() => uid.Fill(data));
             
             Assert.AreEqual("The date and time value must not be before the Unix epoch.", ex.Message);
         }
@@ -81,13 +81,7 @@ namespace Neliva.Tests
             BinaryPrimitives.WriteUInt64BigEndian(expectedTime, (ulong)((utcNow - DateTime.UnixEpoch).Ticks / TimeSpan.TicksPerMillisecond));
             expectedTime = expectedTime.Slice(2);
 
-            var uid = new UidProvider(
-                utcNow: () => utcNow,
-                rngFill: (data) =>
-                {
-                    Assert.AreEqual(randPart.Length, data.Length);
-                    new Span<byte>(randPart).CopyTo(data);
-                });
+            var uid = new TestUidProvider(utcNow, randPart);
 
             Span<byte> output = stackalloc byte[6 + randPart.Length];
             uid.Fill(output);
@@ -112,7 +106,7 @@ namespace Neliva.Tests
             var a = length == 0 ? Array.Empty<byte>() : new byte[length];
             
             Array.Fill(a, fillByte);
-
+            
             return a;
         }
 
@@ -123,6 +117,25 @@ namespace Neliva.Tests
             
             yield return new object[] { new DateTime(DateTime.UnixEpoch.Ticks - 1, DateTimeKind.Local) };
             yield return new object[] { new DateTime(DateTime.UnixEpoch.Ticks - 1, DateTimeKind.Unspecified) };
+        }
+    }
+
+    internal class TestUidProvider : UidProvider
+    {
+        private readonly DateTime _utcNow;
+        private readonly byte[] _randomBytes;
+
+        public TestUidProvider(DateTime utcNow, byte[] randomBytes)
+        {
+            _utcNow = utcNow;
+            _randomBytes = randomBytes;
+        }
+
+        protected override DateTime GetUtcNow() => _utcNow;
+
+        protected override void FillRandom(Span<byte> data)
+        {
+            _randomBytes.CopyTo(data);
         }
     }
 }

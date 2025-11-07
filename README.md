@@ -1,43 +1,36 @@
 ## Neliva.UidProvider
 
-This repository provides functionality for generating unique across space and time identifiers. The specification and the reference implementation are released into the public domain. See the [UNLICENSE](UNLICENSE.md) file.
+This repository provides functionality for generating unique, time-ordered identifiers. Both the specification and the reference implementation are released into the public domain. See the [UNLICENSE](UNLICENSE.md) file for details.
+
 
 [![main](https://github.com/neliva/Neliva.UidProvider/actions/workflows/main.yml/badge.svg)](https://github.com/neliva/Neliva.UidProvider/actions/workflows/main.yml)
-[![dotnet 6.0](https://img.shields.io/badge/dotnet-8.0-green)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
-[![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/Neliva.UidProvider)](https://www.nuget.org/packages/Neliva.UidProvider)
+[![.NET 8.0](https://img.shields.io/badge/dotnet-8.0-green)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
+[![NuGet (with prereleases)](https://img.shields.io/nuget/vpre/Neliva.UidProvider)](https://www.nuget.org/packages/Neliva.UidProvider)
 
 ## Overview
 
-The UidProvider generates variable size IDs ranging from 16 bytes to 32 bytes. An ID consists of:
+The `UidProvider` generates variable-length IDs ranging from 16 to 32 bytes. These identifiers are lexicographically sortable by time when encoded in hexadecimal or base32hex format.
 
-* A 6-byte timestamp, representing the ID's creation, measured in milliseconds since the Unix epoch.
-* A 6-byte random value generated once per provider instance.
-* A 4-byte incrementing counter, initialized to a random value per provider instance.
-* A random value if the ID length is greater than 16 bytes.
+### Byte layout
 
-For the timestamp and counter values, the most significant bytes appear first in the byte sequence (big-endian). The IDs are lexicographically sortable when encoded in hex or base32hex format.
+* Bytes `0..5`  : 48-bit timestamp (big-endian), milliseconds since Unix epoch.
+* Bytes `6..31` : Cryptographically strong random bytes.
 
-The byte format of the ID is the following:
-```
-+-------------+--------+-----------+----------+
-|  Timestamp  |  Node  |  Counter  |  Random  |
-+-------------+--------+-----------+----------+
-|  6          |  6     |  4        |  0 - 16  |
-+-------------+--------+-----------+----------+ 
-```
+## Usage
 
-### Usage
 ```C#
 // using Neliva;
 
 var data = new byte[16]; // min ID size
-var provider = new UidProvider(/* node span, timestamp callback, RNG callback */);
+var provider = new UidProvider();
 
 provider.Fill(data);
 
-// Using the default provider
+// Using the built-in system provider
 
 Span<byte> dataSpan = stackalloc byte[32]; // max ID size
 
-UidProvider.Default.Fill(dataSpan);
+UidProvider.System.Fill(dataSpan);
 ```
+
+Recommended ID size for long-term, high-assurance document identification is 26 bytes (48 bits timestamp + 160 bits random). This offers an extremely low collision probability over multi-decade retention for legal, forensic, and archival scenarios.

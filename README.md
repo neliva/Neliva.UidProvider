@@ -9,7 +9,7 @@ This repository provides functionality for generating unique, time-ordered ident
 
 ## Overview
 
-The `UidProvider` generates variable-length IDs ranging from 16 to 32 bytes. These identifiers are lexicographically sortable by time when encoded in hexadecimal or base32hex format.
+The **UidProvider** generates variable-length IDs ranging from 16 to 32 bytes. These identifiers are lexicographically sortable by time when encoded in hexadecimal or base32hex format.
 
 ### Byte layout
 

@@ -1,6 +1,7 @@
 ## Neliva.UidProvider
 
-This repository provides functionality for generating unique, time-ordered identifiers. Both the specification and the reference implementation are released into the public domain. For details, see the [UNLICENSE](UNLICENSE.md) file.
+This repository provides functionality for generating unique, time-ordered identifiers. Both the specification and the reference implementation are released into the public domain. See the [UNLICENSE](UNLICENSE.md) file for details.
+
 
 [![main](https://github.com/neliva/Neliva.UidProvider/actions/workflows/main.yml/badge.svg)](https://github.com/neliva/Neliva.UidProvider/actions/workflows/main.yml)
 [![.NET 8.0](https://img.shields.io/badge/dotnet-8.0-green)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
@@ -10,12 +11,12 @@ This repository provides functionality for generating unique, time-ordered ident
 
 The `UidProvider` generates variable-length IDs ranging from 16 to 32 bytes. These identifiers are lexicographically sortable by time when encoded in hexadecimal or base32hex format.
 
-**Byte layout:**
+### Byte layout
 
-* Bytes 0-5 : 48-bit timestamp (big-endian), representing milliseconds since the Unix epoch.
-* Bytes 6-N : Cryptographically strong random bytes (N = 15..31).
+* Bytes 0..5  : 48-bit timestamp (big-endian), milliseconds since Unix epoch.
+* Bytes 6..31 : Cryptographically strong random bytes.
 
-### Usage
+## Usage
 
 ```C#
 // using Neliva;
@@ -32,4 +33,4 @@ Span<byte> dataSpan = stackalloc byte[32]; // max ID size
 UidProvider.System.Fill(dataSpan);
 ```
 
-For global-scale, long-term, high-assurance document identification, it is recommended to generate 26-byte IDs (`48 bits timestamp + 160 bits random`). This configuration offers a balanced choice for **legal, forensic, and archival** use cases, where an extremely low collision risk over multi-decade retention is paramount.
+Recommended size for long-term, high-assurance document identification is 26 bytes (48 bits timestamp + 160 bits random). This offers an extremely low collision probability over multi-decade retention for legal, forensic, and archival scenarios.

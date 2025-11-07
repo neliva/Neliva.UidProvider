@@ -20,8 +20,8 @@ namespace Neliva
     /// <para>
     /// Byte layout:
     /// <code>
-    /// Bytes 0..5 : 48-bit timestamp (big-endian), milliseconds since Unix epoch
-    /// Bytes 6..N : Cryptographically strong random bytes (N = 15..31)
+    /// Bytes 0..5  : 48-bit timestamp (big-endian), milliseconds since Unix epoch.
+    /// Bytes 6..31 : Cryptographically strong random bytes.
     /// </code>
     /// </para>
     /// </remarks>

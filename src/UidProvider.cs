@@ -63,8 +63,8 @@ namespace Neliva
         /// The <paramref name="data"/> length is not between 16 and 32 (inclusive).
         /// </exception>
         /// <exception cref="InvalidOperationException">
-        /// The resolved UTC time is not <see cref="DateTimeKind.Utc"/> or is before
-        /// <see cref="DateTime.UnixEpoch"/>.
+        /// The resolved UTC time is not <see cref="DateTimeKind.Utc"/> or
+        /// is before <see cref="DateTime.UnixEpoch"/>.
         /// </exception>
         /// <remarks>
         /// The resulting identifier is lexicographically sortable by timestamp.

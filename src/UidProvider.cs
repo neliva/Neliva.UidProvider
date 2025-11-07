@@ -7,17 +7,30 @@ using System.Security.Cryptography;
 namespace Neliva
 {
     /// <summary>
-    /// Provides functionality for generating unique time ordered identifiers.
+    /// Generates unique, time-ordered identifiers (UIDs) of variable length.
     /// </summary>
     /// <remarks>
-    /// The ID consists of a 6 byte timestamp and 10-26 random bytes.
+    /// Each UID is between 16 and 32 bytes. The first 6 bytes contain a 48-bit, big-endian
+    /// timestamp representing milliseconds since the Unix epoch. The remaining 10–26 bytes
+    /// are filled with cryptographically strong random data.
+    /// <para>
+    /// The resulting identifiers are lexicographically sortable by creation time when encoded
+    /// in hexadecimal or base32hex formats.
+    /// </para>
+    /// <para>
+    /// Byte layout:
+    /// <code>
+    /// Bytes 0..5 : 48-bit timestamp (big-endian), milliseconds since Unix epoch
+    /// Bytes 6..N : Cryptographically strong random bytes (N = 15..31)
+    /// </code>
+    /// </para>
     /// </remarks>
     public abstract class UidProvider
     {
         /// <summary>
-        /// Gets a <see cref="UidProvider"/> instance that relies on
-        /// the <see cref="DateTime.UtcNow"/> and the <see cref="RandomNumberGenerator.Fill(Span{byte})"/>
-        /// to generate unique identifiers.
+        /// Gets the system <see cref="UidProvider"/> implementation, which uses
+        /// <see cref="DateTime.UtcNow"/> for time and <see cref="RandomNumberGenerator.Fill(Span{byte})"/>
+        /// for cryptographically strong randomness.
         /// </summary>
         public static UidProvider System { get; } = new SystemUidProvider();
 
@@ -29,24 +42,33 @@ namespace Neliva
         }
 
         /// <summary>
-        /// Returns the current UTC date and time on this computer.
+        /// Returns the current UTC timestamp used for UID generation.
+        /// Override to supply a custom time source (e.g. a cached or simulated clock).
         /// </summary>
         protected virtual DateTime GetUtcNow() => DateTime.UtcNow;
 
         /// <summary>
-        /// Fills a span with cryptographically strong random bytes.
+        /// Fills the provided span with cryptographically strong random bytes.
+        /// Override to customize the randomness source.
         /// </summary>
         protected virtual void FillRandom(Span<byte> data) => RandomNumberGenerator.Fill(data);
 
         /// <summary>
-        /// Fills the span with the unique identifier bytes.
+        /// Fills the specified span with a generated unique identifier.
         /// </summary>
         /// <param name="data">
-        /// The span to fill with the unique identifier bytes.
+        /// A span whose length must be between 16 and 32 bytes.
         /// </param>
         /// <exception cref="ArgumentException">
-        /// The <paramref name="data"/> span must be between 16 and 32 bytes in length.
+        /// The <paramref name="data"/> length is not between 16 and 32 (inclusive).
         /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// The resolved UTC time is not <see cref="DateTimeKind.Utc"/> or is before
+        /// <see cref="DateTime.UnixEpoch"/>.
+        /// </exception>
+        /// <remarks>
+        /// The resulting identifier is lexicographically sortable by timestamp.
+        /// </remarks>
         public void Fill(Span<byte> data)
         {
             if (data.Length < 16 || data.Length > 32)
@@ -79,7 +101,7 @@ namespace Neliva
         }
 
         /// <summary>
-        /// The default provider implementation.
+        /// System default provider implementation.
         /// </summary>
         private sealed class SystemUidProvider : UidProvider
         {

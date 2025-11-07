@@ -12,8 +12,8 @@ The `UidProvider` generates variable-length IDs ranging from 16 to 32 bytes. The
 
 **Byte layout:**
 
-* Bytes 0-5  : 48-bit timestamp (big-endian), representing milliseconds since the Unix epoch.
-* Bytes 6-31 : Cryptographically strong random bytes.
+* Bytes 0-5 : 48-bit timestamp (big-endian), representing milliseconds since the Unix epoch.
+* Bytes 6-N : Cryptographically strong random bytes (N = 15..31).
 
 ### Usage
 

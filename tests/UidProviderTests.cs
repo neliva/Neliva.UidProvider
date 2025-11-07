@@ -14,9 +14,9 @@ namespace Neliva.Tests
         [TestMethod]
         public void UidProviderDefaultPass()
         {
-            var d = UidProvider.Default;
+            var d = UidProvider.System;
 
-            Assert.IsTrue(object.ReferenceEquals(d, UidProvider.Default));
+            Assert.IsTrue(object.ReferenceEquals(d, UidProvider.System));
 
             Span<byte> id1 = stackalloc byte[32];
             Span<byte> id2 = stackalloc byte[32];
@@ -43,7 +43,7 @@ namespace Neliva.Tests
         {
             var data = new byte[dataLength];
 
-            Assert.AreEqual("data", Assert.ThrowsException<ArgumentException>(() => UidProvider.Default.Fill(data)).ParamName);
+            Assert.AreEqual("data", Assert.ThrowsException<ArgumentException>(() => UidProvider.System.Fill(data)).ParamName);
         }
 
         [TestMethod]

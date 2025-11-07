@@ -19,7 +19,7 @@ namespace Neliva
         /// the <see cref="DateTime.UtcNow"/> and the <see cref="RandomNumberGenerator.Fill(Span{byte})"/>
         /// to generate unique identifiers.
         /// </summary>
-        public static UidProvider Default { get; } = new DefaultUidProvider();
+        public static UidProvider System { get; } = new SystemUidProvider();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UidProvider"/> class.
@@ -81,7 +81,7 @@ namespace Neliva
         /// <summary>
         /// The default provider implementation.
         /// </summary>
-        private sealed class DefaultUidProvider : UidProvider
+        private sealed class SystemUidProvider : UidProvider
         {
         }
     }

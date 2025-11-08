@@ -60,11 +60,10 @@ namespace Neliva.Tests
         }
 
         [TestMethod]
-        public void UidProviderFillBadUtcNowBeforeUnixEpochFail()
+        [DynamicData(nameof(GetInvalidUtcNowBeforeUnixTestData), DynamicDataSourceType.Method)]
+        public void UidProviderFillBadUtcNowBeforeUnixEpochFail(DateTime utcNow)
         {
             var data = new byte[16];
-
-            var utcNow = DateTime.UnixEpoch.AddMilliseconds(-1d);
 
             var uid = new TestUidProvider(utcNow, new byte[10]);
 
@@ -92,22 +91,28 @@ namespace Neliva.Tests
             Assert.IsTrue(MemoryExtensions.SequenceEqual<byte>(randPart, output.Slice(6)));
         }
 
-        private static IEnumerable<object[]> GetValidTestData()
+        [TestMethod]
+        public void UidProviderUnixEpochZero()
         {
-            var maxDate = new DateTime(DateTime.MaxValue.Ticks, DateTimeKind.Utc);
+            var prov = new TestUidProvider(DateTime.UnixEpoch, NewArray(10, 128));
 
-            yield return new object[] { DateTime.UnixEpoch, NewArray(10, 0) };
-            yield return new object[] { DateTime.UnixEpoch.AddMilliseconds(1d), NewArray(26, 0xAB) };
-            yield return new object[] { maxDate, NewArray(16, 0xFF) };
+            Span<byte> output = stackalloc byte[16];
+
+            prov.Fill(output);
+
+            Assert.IsTrue(MemoryExtensions.SequenceEqual<byte>(output.Slice(0, 6), new byte[6]));
         }
 
-        private static byte[] NewArray(int length, byte fillByte)
+        private static IEnumerable<object[]> GetValidTestData()
         {
-            var a = length == 0 ? Array.Empty<byte>() : new byte[length];
-            
-            Array.Fill(a, fillByte);
-            
-            return a;
+            yield return new object[] { DateTime.UnixEpoch, NewArray(10, 10) };
+            yield return new object[] { DateTime.UnixEpoch.AddTicks(1), NewArray(11, 11) };
+            yield return new object[] { DateTime.UnixEpoch.AddTicks(101), NewArray(12, 12) };
+            yield return new object[] { DateTime.UnixEpoch.AddMilliseconds(1d), NewArray(13, 13) };
+            yield return new object[] { DateTime.UnixEpoch.AddSeconds(1), NewArray(14, 14) };
+            yield return new object[] { new DateTime(DateTime.MaxValue.AddMicroseconds(-1).Ticks, DateTimeKind.Utc), NewArray(15, 15) };
+            yield return new object[] { new DateTime(DateTime.MaxValue.Ticks, DateTimeKind.Utc), NewArray(16, 16) };
+            yield return new object[] { new DateTime(2025, 11, 7, 4, 30, 12, 46, 12, DateTimeKind.Utc), NewArray(17, 17) };
         }
 
         private static IEnumerable<object[]> GetInvalidTimeKindTestData()
@@ -118,24 +123,39 @@ namespace Neliva.Tests
             yield return new object[] { new DateTime(DateTime.UnixEpoch.Ticks - 1, DateTimeKind.Local) };
             yield return new object[] { new DateTime(DateTime.UnixEpoch.Ticks - 1, DateTimeKind.Unspecified) };
         }
-    }
 
-    internal class TestUidProvider : UidProvider
-    {
-        private readonly DateTime _utcNow;
-        private readonly byte[] _randomBytes;
-
-        public TestUidProvider(DateTime utcNow, byte[] randomBytes)
+        private static IEnumerable<object[]> GetInvalidUtcNowBeforeUnixTestData()
         {
-            _utcNow = utcNow;
-            _randomBytes = randomBytes;
+            yield return new object[] { DateTime.UnixEpoch.AddTicks(-1) };
+            yield return new object[] { DateTime.UnixEpoch.AddMilliseconds(-1d) };
+
+        }
+        private static byte[] NewArray(int length, byte fillByte)
+        {
+            var a = length == 0 ? Array.Empty<byte>() : new byte[length];
+
+            Array.Fill(a, fillByte);
+
+            return a;
         }
 
-        protected override DateTime GetUtcNow() => _utcNow;
-
-        protected override void FillRandom(Span<byte> data)
+        private sealed class TestUidProvider : UidProvider
         {
-            _randomBytes.CopyTo(data);
+            private readonly DateTime _utcNow;
+            private readonly byte[] _randomBytes;
+
+            public TestUidProvider(DateTime utcNow, byte[] randomBytes)
+            {
+                _utcNow = utcNow;
+                _randomBytes = randomBytes;
+            }
+
+            protected override DateTime GetUtcNow() => _utcNow;
+
+            protected override void FillRandom(Span<byte> data)
+            {
+                _randomBytes.CopyTo(data);
+            }
         }
     }
 }

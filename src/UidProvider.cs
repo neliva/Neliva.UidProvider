@@ -88,7 +88,10 @@ namespace Neliva
                 throw new InvalidOperationException("The date and time value must not be before the Unix epoch.");
             }
 
-            long timestamp = (utcNow - DateTime.UnixEpoch).Ticks / TimeSpan.TicksPerMillisecond;
+            const long unixEpochTicks = 621355968000000000L;
+            const long unixEpochMilliseconds = unixEpochTicks / TimeSpan.TicksPerMillisecond;
+
+            long timestamp = (utcNow.Ticks / TimeSpan.TicksPerMillisecond) - unixEpochMilliseconds;
 
             this.FillRandom(data.Slice(6));
 

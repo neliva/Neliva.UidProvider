@@ -89,6 +89,12 @@ namespace Neliva.Tests
             Assert.IsTrue(MemoryExtensions.SequenceEqual<byte>(expectedTime, output.Slice(0, 6)));
             // random part
             Assert.IsTrue(MemoryExtensions.SequenceEqual<byte>(randPart, output.Slice(6)));
+
+            // Compare to .NET implementation of Unix time milliseconds
+
+            long unixMilliseconds = (long)(BinaryPrimitives.ReadUInt64BigEndian(output) >> 16);
+
+            Assert.AreEqual(new DateTimeOffset(utcNow).ToUnixTimeMilliseconds(), unixMilliseconds);
         }
 
         [TestMethod]
@@ -113,6 +119,7 @@ namespace Neliva.Tests
             yield return new object[] { new DateTime(DateTime.MaxValue.AddMicroseconds(-1).Ticks, DateTimeKind.Utc), NewArray(15, 15) };
             yield return new object[] { new DateTime(DateTime.MaxValue.Ticks, DateTimeKind.Utc), NewArray(16, 16) };
             yield return new object[] { new DateTime(2025, 11, 7, 4, 30, 12, 46, 12, DateTimeKind.Utc), NewArray(17, 17) };
+            yield return new object[] { DateTime.UnixEpoch.AddMilliseconds(99d), NewArray(18, 18) };
         }
 
         private static IEnumerable<object[]> GetInvalidTimeKindTestData()

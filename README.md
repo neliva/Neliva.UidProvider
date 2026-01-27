@@ -21,16 +21,9 @@ The **UidProvider** generates variable-length IDs ranging from 16 to 32 bytes. T
 ```C#
 // using Neliva;
 
-var data = new byte[16]; // min ID size
-var provider = new UidProvider();
+Span<byte> idSpan = stackalloc byte[16];
 
-provider.Fill(data);
-
-// Using the built-in system provider
-
-Span<byte> dataSpan = stackalloc byte[32]; // max ID size
-
-UidProvider.System.Fill(dataSpan);
+UidProvider.System.Fill(idSpan);
 ```
 
 Recommended ID size for long-term, high-assurance document identification is 26 bytes (48 bits timestamp + 160 bits random). This offers an extremely low collision probability over multi-decade retention for legal, forensic, and archival scenarios.

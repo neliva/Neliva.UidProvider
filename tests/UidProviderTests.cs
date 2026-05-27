@@ -11,25 +11,12 @@ namespace Neliva.Tests
     public class UidProviderTests
     {
         [Fact]
-        public void UidProviderDefaultPass()
+        public void UidProviderSystemIsSingleton()
         {
             var d = UidProvider.System;
 
+            Assert.NotNull(d);
             Assert.Same(d, UidProvider.System);
-
-            Span<byte> id1 = stackalloc byte[32];
-            Span<byte> id2 = stackalloc byte[32];
-
-            d.Fill(id1);
-            d.Fill(id2);
-
-            // random part
-            Assert.False(MemoryExtensions.SequenceEqual<byte>(id1.Slice(6), id2.Slice(6)));
-
-            // timestamp
-            var t1 = BinaryPrimitives.ReadUInt64BigEndian(id1) >> 16;
-            var t2 = BinaryPrimitives.ReadUInt64BigEndian(id2) >> 16;
-            Assert.True((t2 - t1) < 2000); // two calls should not be more than 2s apart.
         }
 
         [Theory]
@@ -109,6 +96,189 @@ namespace Neliva.Tests
             Assert.True(MemoryExtensions.SequenceEqual<byte>(output.Slice(0, 6), new byte[6]));
         }
 
+        [Theory]
+        [InlineData(16)]
+        [InlineData(17)]
+        [InlineData(23)]
+        [InlineData(24)]
+        [InlineData(31)]
+        [InlineData(32)]
+        public void UidProviderFillAllValidLengthsPass(int dataLength)
+        {
+            var randPart = NewArray(dataLength - 6, 0xAB);
+            var utcNow = new DateTime(2025, 1, 2, 3, 4, 5, 6, DateTimeKind.Utc);
+            var prov = new TestUidProvider(utcNow, randPart);
+
+            var output = new byte[dataLength];
+            prov.Fill(output);
+
+            // random part filled exactly
+            Assert.True(MemoryExtensions.SequenceEqual<byte>(randPart, output.AsSpan(6)));
+
+            // timestamp matches
+            long unixMs = (long)(BinaryPrimitives.ReadUInt64BigEndian(output) >> 16);
+            Assert.Equal(new DateTimeOffset(utcNow).ToUnixTimeMilliseconds(), unixMs);
+        }
+
+        [Fact]
+        public void UidProviderFillRandomReceivesCorrectLength()
+        {
+            int observedLength = -1;
+            var prov = new LambdaUidProvider(
+                () => DateTime.UnixEpoch,
+                span => { observedLength = span.Length; });
+
+            for (int len = 16; len <= 32; len++)
+            {
+                observedLength = -1;
+                prov.Fill(new byte[len]);
+                Assert.Equal(len - 6, observedLength);
+            }
+        }
+
+        [Fact]
+        public void UidProviderFillDoesNotOverwriteRandomBytes()
+        {
+            // Random fills bytes 6..end with a known pattern; the timestamp write
+            // must only touch bytes 0..5 and leave the random region untouched.
+            var randPart = NewArray(26, 0x5A);
+            var utcNow = new DateTime(2099, 12, 31, 23, 59, 59, 999, DateTimeKind.Utc);
+            var prov = new TestUidProvider(utcNow, randPart);
+
+            var output = new byte[32];
+            prov.Fill(output);
+
+            Assert.True(MemoryExtensions.SequenceEqual<byte>(randPart, output.AsSpan(6)));
+        }
+
+        [Fact]
+        public void UidProviderFillTimestampIsBigEndian48Bit()
+        {
+            // Pick a timestamp whose bytes are all distinct so endian errors are detectable.
+            long ms = 0x0102_0304_0506L;
+            var utcNow = DateTime.UnixEpoch.AddMilliseconds(ms);
+            var prov = new TestUidProvider(utcNow, NewArray(10, 0));
+
+            var output = new byte[16];
+            prov.Fill(output);
+
+            Assert.Equal(0x01, output[0]);
+            Assert.Equal(0x02, output[1]);
+            Assert.Equal(0x03, output[2]);
+            Assert.Equal(0x04, output[3]);
+            Assert.Equal(0x05, output[4]);
+            Assert.Equal(0x06, output[5]);
+        }
+
+        [Fact]
+        public void UidProviderFillIsLexicographicallyOrderedByTime()
+        {
+            var t1 = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var t2 = t1.AddMilliseconds(1);
+            var t3 = t1.AddDays(365);
+
+            var rand = NewArray(10, 0xFF); // max random for the earlier id
+            var rand2 = NewArray(10, 0x00); // min random for the later ids
+
+            var a = new byte[16];
+            var b = new byte[16];
+            var c = new byte[16];
+
+            new TestUidProvider(t1, rand).Fill(a);
+            new TestUidProvider(t2, rand2).Fill(b);
+            new TestUidProvider(t3, rand2).Fill(c);
+
+            Assert.True(MemoryExtensions.SequenceCompareTo<byte>(a, b) < 0);
+            Assert.True(MemoryExtensions.SequenceCompareTo<byte>(b, c) < 0);
+        }
+
+        [Fact]
+        public void UidProviderFillDoesNotWriteOutsideSpan()
+        {
+            var randPart = NewArray(10, 0x77);
+            var prov = new TestUidProvider(DateTime.UnixEpoch.AddMilliseconds(1), randPart);
+
+            var buffer = new byte[16 + 4];
+            // Sentinel bytes around the slice we will fill.
+            buffer[^1] = 0xEE;
+            buffer[^2] = 0xEE;
+            buffer[^3] = 0xEE;
+            buffer[^4] = 0xEE;
+
+            prov.Fill(buffer.AsSpan(0, 16));
+
+            Assert.Equal(0xEE, buffer[^1]);
+            Assert.Equal(0xEE, buffer[^2]);
+            Assert.Equal(0xEE, buffer[^3]);
+            Assert.Equal(0xEE, buffer[^4]);
+        }
+
+        [Fact]
+        public void UidProviderSystemTimestampMatchesUtcNow()
+        {
+            // Allow a small tolerance to absorb any non-monotonic UtcNow jitter
+            // (e.g. NTP corrections) without making the test flaky.
+            const long toleranceMs = 1000;
+
+            var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            Span<byte> id = stackalloc byte[16];
+            UidProvider.System.Fill(id);
+
+            var after = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            long ts = (long)(BinaryPrimitives.ReadUInt64BigEndian(id) >> 16);
+
+            Assert.InRange(ts, before - toleranceMs, after + toleranceMs);
+        }
+
+        [Fact]
+        public void UidProviderSystemFillRandomWritesRandomBytes()
+        {
+            // Deterministically verify the default FillRandom delegates to a real RNG
+            // by calling it directly with a pre-filled sentinel buffer and asserting
+            // every byte was overwritten with non-sentinel data on at least one call.
+            var prov = new ExposedRandomProvider();
+
+            const byte sentinel = 0xCD;
+            Span<byte> a = stackalloc byte[26];
+            Span<byte> b = stackalloc byte[26];
+            a.Fill(sentinel);
+            b.Fill(sentinel);
+
+            prov.CallFillRandom(a);
+            prov.CallFillRandom(b);
+
+            // The two independent RNG calls must produce different output.
+            Assert.False(MemoryExtensions.SequenceEqual<byte>(a, b));
+
+            // Neither buffer should remain the all-sentinel pattern.
+            Assert.False(IsAll(a, sentinel));
+            Assert.False(IsAll(b, sentinel));
+
+            static bool IsAll(ReadOnlySpan<byte> s, byte v)
+            {
+                foreach (var x in s)
+                {
+                    if (x != v) return false;
+                }
+                return true;
+            }
+        }
+
+        private sealed class ExposedRandomProvider : UidProvider
+        {
+            public void CallFillRandom(Span<byte> data) => FillRandom(data);
+        }
+
+        [Fact]
+        public void UidProviderFillEmptyArgumentMessage()
+        {
+            var ex = Assert.Throws<ArgumentException>(() => UidProvider.System.Fill(Array.Empty<byte>()));
+            Assert.Equal("data", ex.ParamName);
+            Assert.StartsWith("The span must be between 16 and 32 bytes in length.", ex.Message);
+        }
+
         public static IEnumerable<object[]> GetValidTestData()
         {
             yield return new object[] { DateTime.UnixEpoch, NewArray(10, 10) };
@@ -144,6 +314,24 @@ namespace Neliva.Tests
             Array.Fill(a, fillByte);
 
             return a;
+        }
+
+        private sealed class LambdaUidProvider : UidProvider
+        {
+            private readonly Func<DateTime> _utcNow;
+            private readonly SpanAction _fillRandom;
+
+            public delegate void SpanAction(Span<byte> data);
+
+            public LambdaUidProvider(Func<DateTime> utcNow, SpanAction fillRandom)
+            {
+                _utcNow = utcNow;
+                _fillRandom = fillRandom;
+            }
+
+            protected override DateTime GetUtcNow() => _utcNow();
+
+            protected override void FillRandom(Span<byte> data) => _fillRandom(data);
         }
 
         private sealed class TestUidProvider : UidProvider

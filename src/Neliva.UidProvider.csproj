@@ -9,7 +9,7 @@
 
 		<Copyright>This is free and unencumbered software released into the public domain.</Copyright>
 
-		<PackageTags>UUID GUID Unique</PackageTags>
+		<PackageTags>UUID GUID UID ULID KSUID Unique Identifier Id Sortable TimeOrdered Ordered Monotonic Timestamp Lexicographic Random Cryptographic DistributedId PrimaryKey</PackageTags>
 
 		<PackageProjectUrl>https://github.com/neliva/Neliva.UidProvider</PackageProjectUrl>
 

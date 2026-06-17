@@ -4,6 +4,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Neliva.Tests
@@ -277,6 +278,118 @@ namespace Neliva.Tests
             var ex = Assert.Throws<ArgumentException>(() => UidProvider.System.Fill(Array.Empty<byte>()));
             Assert.Equal("data", ex.ParamName);
             Assert.StartsWith("The span must be between 16 and 32 bytes in length.", ex.Message);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(15)]
+        [InlineData(33)]
+        public void UidProviderFillInvalidLengthDoesNotInvokeHooks(int dataLength)
+        {
+            bool utcNowCalled = false;
+            bool randomCalled = false;
+
+            var prov = new LambdaUidProvider(
+                () => { utcNowCalled = true; return DateTime.UnixEpoch; },
+                span => { randomCalled = true; });
+
+            var data = new byte[dataLength];
+
+            Assert.Throws<ArgumentException>(() => prov.Fill(data));
+
+            // Length is validated before the time source or random source is touched.
+            Assert.False(utcNowCalled);
+            Assert.False(randomCalled);
+        }
+
+        [Theory]
+        [MemberData(nameof(GetInvalidTimeKindTestData))]
+        [MemberData(nameof(GetInvalidUtcNowBeforeUnixTestData))]
+        public void UidProviderFillInvalidTimeDoesNotFillRandomOrMutateBuffer(DateTime utcNow)
+        {
+            bool randomCalled = false;
+
+            var prov = new LambdaUidProvider(
+                () => utcNow,
+                span => { randomCalled = true; });
+
+            const byte sentinel = 0x9C;
+            var buffer = new byte[16];
+            Array.Fill(buffer, sentinel);
+
+            Assert.Throws<InvalidOperationException>(() => prov.Fill(buffer));
+
+            // Time is validated before FillRandom runs and before any byte is written,
+            // so a failed call must leave the caller's buffer completely untouched.
+            Assert.False(randomCalled);
+            Assert.All(buffer, b => Assert.Equal(sentinel, b));
+        }
+
+        [Fact]
+        public void UidProviderFillInvokesHooksExactlyOnce()
+        {
+            int utcNowCount = 0;
+            int randomCount = 0;
+
+            var prov = new LambdaUidProvider(
+                () => { utcNowCount++; return new DateTime(2025, 6, 15, 12, 0, 0, DateTimeKind.Utc); },
+                span => { randomCount++; });
+
+            prov.Fill(new byte[20]);
+
+            // Exactly one clock read (no skew window) and one random fill per call.
+            Assert.Equal(1, utcNowCount);
+            Assert.Equal(1, randomCount);
+        }
+
+        [Fact]
+        public void UidProviderFillSameMillisecondProducesSameTimestamp()
+        {
+            // Two instants within the same millisecond (differing only by sub-ms ticks)
+            // must yield identical 48-bit timestamps.
+            var baseTime = DateTime.UnixEpoch.AddSeconds(5);
+            var sameMs = baseTime.AddTicks(TimeSpan.TicksPerMillisecond - 1);
+
+            var a = new byte[16];
+            var b = new byte[16];
+
+            new TestUidProvider(baseTime, NewArray(10, 1)).Fill(a);
+            new TestUidProvider(sameMs, NewArray(10, 2)).Fill(b);
+
+            Assert.True(MemoryExtensions.SequenceEqual<byte>(a.AsSpan(0, 6), b.AsSpan(0, 6)));
+        }
+
+        [Fact]
+        public void UidProviderSystemConcurrentFillIsThreadSafe()
+        {
+            const int count = 4096;
+            const long toleranceMs = 1000;
+
+            var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            var ids = new byte[count][];
+
+            // The System singleton is stateless and must be safe for concurrent use.
+            Parallel.For(0, count, i =>
+            {
+                var id = new byte[32];
+                UidProvider.System.Fill(id);
+                ids[i] = id;
+            });
+
+            var after = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            var randomParts = new HashSet<string>(count);
+
+            foreach (var id in ids)
+            {
+                // No torn timestamp writes under contention.
+                long ts = (long)(BinaryPrimitives.ReadUInt64BigEndian(id) >> 16);
+                Assert.InRange(ts, before - toleranceMs, after + toleranceMs);
+
+                // No shared-buffer corruption across threads.
+                Assert.True(randomParts.Add(Convert.ToHexString(id.AsSpan(6))));
+            }
         }
 
         public static IEnumerable<object[]> GetValidTestData()

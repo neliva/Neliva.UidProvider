@@ -25,6 +25,7 @@
 		-->
 		<MinClientVersion>4.3.0</MinClientVersion>
 
+		<Title>Unique ID Provider</Title>
 		<Description>Generate unique, time-ordered identifiers.</Description>
 
 		<PackageReadmeFile>NUGET.md</PackageReadmeFile>
@@ -34,9 +35,12 @@
 		<VersionSuffix Condition=" '$(Version)' == '' and '$(VersionSuffix)' == ''">dev</VersionSuffix>
 
 		<!--
-		// https://github.com/dotnet/sourcelink/blob/master/docs/README.md
-		// Starting with .NET Core SDK 2.1.300, a fully deterministic build is
-		// turned on when both Deterministic and ContinuousIntegrationBuild properties are set to true.
+		// https://github.com/dotnet/sourcelink
+		// A fully deterministic build is produced when both ContinuousIntegrationBuild
+		// and DeterministicSourcePaths are set to true (see the GITHUB_ACTIONS group
+		// below). Deterministic is on by default in the SDK. Source Link and embedded
+		// untracked sources are enabled by the .NET SDK for GitHub-hosted repositories,
+		// so no Source Link package reference is required.
 		-->
 		<Deterministic>true</Deterministic>
 
@@ -72,11 +76,6 @@
 		<None Include="NUGET.md" Pack="true" PackagePath="" Visible="false" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<!-- Build generated file. -->
-		<None Include=".AssemblyAttributes" Visible="false" />
-	</ItemGroup>
-
 	<!-- This should not be enabled during local dev or the debugger won't be able to find the local source files. -->
 	<!-- https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables -->
 	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
@@ -87,32 +86,9 @@
 		<DeterministicSourcePaths>true</DeterministicSourcePaths>
 	</PropertyGroup>
 
-	<ItemGroup>
-		<!-- https://github.com/dotnet/sourcelink -->
-		<PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
-	</ItemGroup>
-
-	<!--
-    // Workaround for deterministic builds on SDKs prior to 3.1.300
-    // https://github.com/clairernovotny/DeterministicBuilds
-    // https://github.com/dotnet/sourcelink/issues/572
-    -->
-	<PropertyGroup>
-		<TargetFrameworkMonikerAssemblyAttributesPath>$([System.IO.Path]::Combine('$(IntermediateOutputPath)','$(TargetFrameworkMoniker).AssemblyAttributes$(DefaultLanguageSourceExtension)'))</TargetFrameworkMonikerAssemblyAttributesPath>
-	</PropertyGroup>
-
 	<PropertyGroup>
 		<AllowUnsafeBlocks>false</AllowUnsafeBlocks>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<EmbeddedFiles Include="$(GeneratedAssemblyInfoFile)" />
-	</ItemGroup>
-
-	<!-- Workaround for https://github.com/dotnet/sdk/issues/11105 -->
-	<ItemGroup>
-		<SourceRoot Include="$(NuGetPackageRoot)" Condition="'$(NuGetPackageRoot)' != ''" />
-	</ItemGroup>
 
 	<!--
     <ItemGroup>

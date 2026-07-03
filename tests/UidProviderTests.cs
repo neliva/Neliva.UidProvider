@@ -172,6 +172,27 @@ namespace Neliva.Tests
         }
 
         [Fact]
+        public void UidProviderFillDateTimeMaxValueTimestampIsEncodedExactly()
+        {
+            var utcNow = new DateTime(DateTime.MaxValue.Ticks, DateTimeKind.Utc);
+            long expectedMs = new DateTimeOffset(utcNow).ToUnixTimeMilliseconds();
+            var prov = new TestUidProvider(utcNow, NewArray(10, 0));
+
+            var output = new byte[16];
+            prov.Fill(output);
+
+            var actual =
+                ((long)output[0] << 40) |
+                ((long)output[1] << 32) |
+                ((long)output[2] << 24) |
+                ((long)output[3] << 16) |
+                ((long)output[4] << 8) |
+                output[5];
+
+            Assert.Equal(expectedMs, actual);
+        }
+
+        [Fact]
         public void UidProviderFillIsLexicographicallyOrderedByTime()
         {
             var t1 = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -212,6 +233,61 @@ namespace Neliva.Tests
             Assert.Equal(0xEE, buffer[^2]);
             Assert.Equal(0xEE, buffer[^3]);
             Assert.Equal(0xEE, buffer[^4]);
+        }
+
+        [Fact]
+        public void UidProviderFillDoesNotWriteOutsideNonZeroOffsetSpan()
+        {
+            const byte sentinel = 0xEE;
+            var randPart = NewArray(10, 0x44);
+            var prov = new TestUidProvider(DateTime.UnixEpoch.AddMilliseconds(42), randPart);
+
+            var buffer = new byte[24];
+            Array.Fill(buffer, sentinel);
+
+            prov.Fill(buffer.AsSpan(4, 16));
+
+            Assert.All(buffer.AsSpan(0, 4).ToArray(), b => Assert.Equal(sentinel, b));
+            Assert.All(buffer.AsSpan(20, 4).ToArray(), b => Assert.Equal(sentinel, b));
+            Assert.True(MemoryExtensions.SequenceEqual<byte>(randPart, buffer.AsSpan(10, 10)));
+        }
+
+        [Fact]
+        public void UidProviderFillPropagatesUtcNowExceptionWithoutMutatingBuffer()
+        {
+            bool randomCalled = false;
+            var expected = new InvalidOperationException("clock failed");
+            var prov = new LambdaUidProvider(
+                () => throw expected,
+                span => { randomCalled = true; });
+
+            const byte sentinel = 0xA5;
+            var buffer = new byte[16];
+            Array.Fill(buffer, sentinel);
+
+            var actual = Assert.Throws<InvalidOperationException>(() => prov.Fill(buffer));
+
+            Assert.Same(expected, actual);
+            Assert.False(randomCalled);
+            Assert.All(buffer, b => Assert.Equal(sentinel, b));
+        }
+
+        [Fact]
+        public void UidProviderFillPropagatesFillRandomExceptionWithoutWritingTimestamp()
+        {
+            var expected = new InvalidOperationException("random failed");
+            var prov = new LambdaUidProvider(
+                () => DateTime.UnixEpoch.AddMilliseconds(1),
+                span => throw expected);
+
+            const byte sentinel = 0xA5;
+            var buffer = new byte[16];
+            Array.Fill(buffer, sentinel);
+
+            var actual = Assert.Throws<InvalidOperationException>(() => prov.Fill(buffer));
+
+            Assert.Same(expected, actual);
+            Assert.All(buffer, b => Assert.Equal(sentinel, b));
         }
 
         [Fact]

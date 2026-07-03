@@ -89,6 +89,8 @@ jobs:
       run: dotnet restore
     - name: Restore .NET tools
       run: dotnet tool restore
+    - name: Verify formatting
+      run: dotnet format --verify-no-changes --no-restore
     - name: Build
       run: dotnet build --configuration Release --no-restore --nologo -p:AssemblyVersion=${{ steps.semver.outputs.AssemblyVersion }} -p:FileVersion=${{ steps.semver.outputs.FileVersion }} -p:InformationalVersion=${{ steps.semver.outputs.InformationalVersion }} -p:PackageVersion=${{ steps.semver.outputs.PackageVersion }}
     - name: Test (with code coverage)

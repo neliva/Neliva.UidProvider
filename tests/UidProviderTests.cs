@@ -598,6 +598,71 @@ namespace Neliva.Tests
             Assert.True(MemoryExtensions.SequenceEqual<byte>(viaHook.AsSpan(0, 6), viaArgument.AsSpan(0, 6)));
         }
 
+        [Theory]
+        [InlineData(16)]
+        [InlineData(17)]
+        [InlineData(23)]
+        [InlineData(24)]
+        [InlineData(31)]
+        [InlineData(32)]
+        public void UidProviderFillWithTimestampAllValidLengthsPass(int dataLength)
+        {
+            var randPart = NewArray(dataLength - 6, 0xAB);
+            var timestamp = new DateTime(2025, 1, 2, 3, 4, 5, 6, DateTimeKind.Utc);
+
+            // The clock hook is unused by this overload.
+            var prov = new TestUidProvider(default, randPart);
+
+            var output = new byte[dataLength];
+            prov.Fill(output, timestamp);
+
+            // random part filled exactly (also proves the correct slice length reached FillRandom)
+            Assert.True(MemoryExtensions.SequenceEqual<byte>(randPart, output.AsSpan(6)));
+
+            // timestamp matches
+            long unixMs = (long)(BinaryPrimitives.ReadUInt64BigEndian(output) >> 16);
+            Assert.Equal(new DateTimeOffset(timestamp).ToUnixTimeMilliseconds(), unixMs);
+        }
+
+        [Fact]
+        public void UidProviderFillWithTimestampDoesNotWriteOutsideNonZeroOffsetSpan()
+        {
+            const byte sentinel = 0xEE;
+            var randPart = NewArray(10, 0x44);
+            var timestamp = DateTime.UnixEpoch.AddMilliseconds(42);
+
+            var prov = new TestUidProvider(default, randPart);
+
+            var buffer = new byte[24];
+            Array.Fill(buffer, sentinel);
+
+            prov.Fill(buffer.AsSpan(4, 16), timestamp);
+
+            // Bytes before and after the filled slice must be untouched.
+            Assert.All(buffer.AsSpan(0, 4).ToArray(), b => Assert.Equal(sentinel, b));
+            Assert.All(buffer.AsSpan(20, 4).ToArray(), b => Assert.Equal(sentinel, b));
+            Assert.True(MemoryExtensions.SequenceEqual<byte>(randPart, buffer.AsSpan(10, 10)));
+        }
+
+        [Fact]
+        public void UidProviderFillWithTimestampPropagatesFillRandomExceptionWithoutWritingTimestamp()
+        {
+            var expected = new InvalidOperationException("random failed");
+            var prov = new LambdaUidProvider(
+                () => DateTime.UnixEpoch,
+                span => throw expected);
+
+            const byte sentinel = 0xA5;
+            var buffer = new byte[16];
+            Array.Fill(buffer, sentinel);
+
+            var actual = Assert.Throws<InvalidOperationException>(() => prov.Fill(buffer, DateTime.UnixEpoch.AddMilliseconds(1)));
+
+            // FillRandom runs before the timestamp write, so a failure leaves the buffer untouched.
+            Assert.Same(expected, actual);
+            Assert.All(buffer, b => Assert.Equal(sentinel, b));
+        }
+
         public static IEnumerable<object[]> GetValidTestData()
         {
             yield return new object[] { DateTime.UnixEpoch, NewArray(10, 10) };

@@ -601,8 +601,19 @@ namespace Neliva.Tests
         [Theory]
         [InlineData(16)]
         [InlineData(17)]
+        [InlineData(18)]
+        [InlineData(19)]
+        [InlineData(20)]
+        [InlineData(21)]
+        [InlineData(22)]
         [InlineData(23)]
         [InlineData(24)]
+        [InlineData(25)]
+        [InlineData(26)]
+        [InlineData(27)]
+        [InlineData(28)]
+        [InlineData(29)]
+        [InlineData(30)]
         [InlineData(31)]
         [InlineData(32)]
         public void UidProviderFillWithTimestampAllValidLengthsPass(int dataLength)
@@ -661,6 +672,19 @@ namespace Neliva.Tests
             // FillRandom runs before the timestamp write, so a failure leaves the buffer untouched.
             Assert.Same(expected, actual);
             Assert.All(buffer, b => Assert.Equal(sentinel, b));
+        }
+
+        [Fact]
+        public void UidProviderFillWithTimestampInvalidLengthPrecedesInvalidTimestamp()
+        {
+            var data = new byte[15];
+            var localTimestamp = new DateTime(DateTime.UnixEpoch.Ticks - 1, DateTimeKind.Local);
+
+            var ex = Assert.Throws<ArgumentException>(() => UidProvider.System.Fill(data, localTimestamp));
+
+            // Data length is validated first; an invalid timestamp must not mask it.
+            Assert.Equal("data", ex.ParamName);
+            Assert.StartsWith("The span must be between 16 and 32 bytes in length.", ex.Message);
         }
 
         public static IEnumerable<object[]> GetValidTestData()

@@ -24,6 +24,26 @@ namespace Neliva
     /// Bytes 6..31 : Cryptographically strong random bytes.
     /// </code>
     /// </para>
+    /// <para>
+    /// Ordering: identifiers are sortable by their millisecond timestamp but are not strictly
+    /// monotonic. Identifiers generated within the same millisecond are distinguished only by
+    /// their random bytes, so their relative order is effectively arbitrary. The parameterless
+    /// <see cref="Fill(Span{byte})"/> overload reads the timestamp from the system clock through
+    /// <see cref="GetUtcNow"/>; if that clock moves backwards (for example, an NTP correction),
+    /// later identifiers can sort before earlier ones. Pass an explicit, non-decreasing value to
+    /// <see cref="Fill(Span{byte}, DateTime)"/> when stronger ordering control is required.
+    /// </para>
+    /// <para>
+    /// Encoding: the raw bytes are time-sortable under an ordinal (byte-wise) comparison because
+    /// the timestamp is stored big-endian first. A text encoding preserves that order only when
+    /// it is itself order-preserving, such as hexadecimal or base32hex. Standard Base64 is not
+    /// order-preserving and does not retain time ordering.
+    /// </para>
+    /// <para>
+    /// Time disclosure: the leading timestamp is readable, so identifiers are not opaque and
+    /// reveal when they were created. The random portion is cryptographically strong, but do not
+    /// rely on these identifiers to hide creation time or as unguessable, secret tokens.
+    /// </para>
     /// </remarks>
     public abstract class UidProvider
     {

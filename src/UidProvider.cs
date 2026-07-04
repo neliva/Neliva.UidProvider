@@ -24,6 +24,26 @@ namespace Neliva
     /// Bytes 6..31 : Cryptographically strong random bytes.
     /// </code>
     /// </para>
+    /// <para>
+    /// Ordering: identifiers are sortable by their millisecond timestamp but are not strictly
+    /// monotonic. Identifiers generated within the same millisecond are distinguished only by
+    /// their random bytes, so their relative order is effectively arbitrary. The parameterless
+    /// <see cref="Fill(Span{byte})"/> overload reads the timestamp from the system clock through
+    /// <see cref="GetUtcNow"/>; if that clock moves backwards (for example, an NTP correction),
+    /// later identifiers can sort before earlier ones. Pass an explicit, non-decreasing value to
+    /// <see cref="Fill(Span{byte}, DateTime)"/> when stronger ordering control is required.
+    /// </para>
+    /// <para>
+    /// Encoding: the raw bytes are time-sortable under an ordinal (byte-wise) comparison because
+    /// the timestamp is stored big-endian first. A text encoding preserves that order only when
+    /// it is itself order-preserving, such as hexadecimal or base32hex. Standard Base64 is not
+    /// order-preserving and does not retain time ordering.
+    /// </para>
+    /// <para>
+    /// Time disclosure: the leading timestamp is readable, so identifiers are not opaque and
+    /// reveal when they were created. The random portion is cryptographically strong, but do not
+    /// rely on these identifiers to hide creation time or as unguessable, secret tokens.
+    /// </para>
     /// </remarks>
     public abstract class UidProvider
     {
@@ -76,31 +96,76 @@ namespace Neliva
                 throw new ArgumentException("The span must be between 16 and 32 bytes in length.", nameof(data));
             }
 
-            DateTime utcNow = this.GetUtcNow();
+            DateTime timestamp = this.GetUtcNow();
 
-            if (utcNow.Kind != DateTimeKind.Utc)
+            if (timestamp.Kind != DateTimeKind.Utc)
             {
                 throw new InvalidOperationException("The date and time value kind must be UTC.");
             }
 
-            if (utcNow < DateTime.UnixEpoch)
+            if (timestamp < DateTime.UnixEpoch)
             {
                 throw new InvalidOperationException("The date and time value must not be before the Unix epoch.");
             }
 
+            this.FillCore(data, timestamp);
+        }
+
+        /// <summary>
+        /// Fills the specified span with a generated unique identifier that encodes the
+        /// supplied UTC <paramref name="timestamp"/> instead of the current UTC time.
+        /// </summary>
+        /// <param name="data">
+        /// A span whose length must be between 16 and 32 bytes.
+        /// </param>
+        /// <param name="timestamp">
+        /// The timestamp to encode. Its <see cref="DateTime.Kind"/> must be
+        /// <see cref="DateTimeKind.Utc"/> and the value must not be before
+        /// <see cref="DateTime.UnixEpoch"/>.
+        /// </param>
+        /// <exception cref="ArgumentException">
+        /// The <paramref name="data"/> length is not between 16 and 32 (inclusive), or
+        /// <paramref name="timestamp"/> is not <see cref="DateTimeKind.Utc"/>, or
+        /// <paramref name="timestamp"/> is before <see cref="DateTime.UnixEpoch"/>.
+        /// </exception>
+        /// <remarks>
+        /// The resulting identifier is lexicographically sortable by timestamp.
+        /// </remarks>
+        public void Fill(Span<byte> data, DateTime timestamp)
+        {
+            if (data.Length < 16 || data.Length > 32)
+            {
+                throw new ArgumentException("The span must be between 16 and 32 bytes in length.", nameof(data));
+            }
+
+            if (timestamp.Kind != DateTimeKind.Utc)
+            {
+                throw new ArgumentException("The date and time value kind must be UTC.", nameof(timestamp));
+            }
+
+            if (timestamp < DateTime.UnixEpoch)
+            {
+                throw new ArgumentException("The date and time value must not be before the Unix epoch.", nameof(timestamp));
+            }
+
+            this.FillCore(data, timestamp);
+        }
+
+        private void FillCore(Span<byte> data, DateTime timestamp)
+        {
             const long unixEpochTicks = 621355968000000000L;
             const long unixEpochMilliseconds = unixEpochTicks / TimeSpan.TicksPerMillisecond;
 
-            long timestamp = (utcNow.Ticks / TimeSpan.TicksPerMillisecond) - unixEpochMilliseconds;
+            long ms = (timestamp.Ticks / TimeSpan.TicksPerMillisecond) - unixEpochMilliseconds;
 
             this.FillRandom(data.Slice(6));
 
-            data[5] = (byte)timestamp;
-            data[4] = (byte)(timestamp >> 8);
-            data[3] = (byte)(timestamp >> 16);
-            data[2] = (byte)(timestamp >> 24);
-            data[1] = (byte)(timestamp >> 32);
-            data[0] = (byte)(timestamp >> 40);
+            data[5] = (byte)ms;
+            data[4] = (byte)(ms >> 8);
+            data[3] = (byte)(ms >> 16);
+            data[2] = (byte)(ms >> 24);
+            data[1] = (byte)(ms >> 32);
+            data[0] = (byte)(ms >> 40);
         }
 
         /// <summary>
